@@ -40,8 +40,12 @@
   button { font-family: inherit; cursor: pointer; transition: background 0.2s; }
   input { font-family: inherit; }
 
-  /* ---------- Login Screen ---------- */
-  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #C1C7D0; }
+  /* ---------- Loading & Login Screens ---------- */
+  #loading-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--ns-bg); }
+  .spinner { width: 40px; height: 40px; border: 4px solid var(--ns-border); border-top-color: var(--ns-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #login-screen { min-height: 100vh; display: none; align-items: center; justify-content: center; background: #C1C7D0; }
   .login-card { background: var(--ns-surface); padding: 40px 50px; border-radius: 4px; border-top: 6px solid var(--ns-tab-bg); box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
   .login-card h1 { font-size: 24px; font-weight: 600; margin-bottom: 6px; color: var(--ns-tab-bg); }
   .field { margin-bottom: 18px; }
@@ -55,11 +59,18 @@
   
   /* Top Global Header */
   .global-header { background: var(--ns-header-bg); color: var(--ns-header-text); padding: 0 24px; height: 50px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C1C7D0; }
-  .global-header .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .global-header .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
   .global-header .user-menu { display: flex; align-items: center; gap: 16px; font-size: 14px; }
   .role-badge { background: rgba(10, 37, 64, 0.1); color: var(--ns-header-text); padding: 3px 10px; border-radius: 20px; font-weight: 700; font-size: 12px; }
-  .signout-btn { background: none; border: none; color: var(--ns-primary); font-weight: 600; font-size: 14px; }
-  .signout-btn:hover { text-decoration: underline; }
+  
+  /* Circular Power Button */
+  .signout-btn { 
+    background: #F8F9FA; border: 1px solid var(--ns-border); color: var(--ns-danger); 
+    width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s; padding: 0;
+  }
+  .signout-btn svg { width: 18px; height: 18px; }
+  .signout-btn:hover { background: #FDECEA; border-color: var(--ns-danger); color: #D12F19; }
   
   /* Mobile Header Calendar Icon */
   .mobile-cal-btn { display: none; background: none; border: none; color: var(--ns-tab-bg); padding: 5px; margin-left: 10px; cursor: pointer; }
@@ -146,6 +157,7 @@
   /* Mobile App Navigation (Bottom Bar) */
   .mobile-bottom-nav { display: none; }
 
+ 
   /* Mobile Overrides */
   @media (max-width: 768px) {
     body { padding-bottom: 70px; } /* Space for bottom nav */
@@ -153,9 +165,14 @@
     .tab-strip { display: none; } 
     .tab-strip-container { height: 0; padding: 0; overflow: visible; } 
     .dashboard-tables { grid-template-columns: 1fr; }
-    .global-header { padding: 0 20px; height: 55px; }
+    .global-header { padding: 0 15px; height: 55px; }
+    .global-header .logo { font-size: 18px; } /* Restored to full size! */
     main { padding: 20px 15px; }
     
+  /* Extra Small Phones */
+  @media (max-width: 400px) {
+    .global-header .user-menu { gap: 10px; }
+  }
     .mobile-cal-btn { display: block; }
     
     /* Bottom Navigation Bar */
@@ -233,6 +250,11 @@
 </head>
 <body>
 
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div style="color:var(--ns-text-muted); font-weight:600; font-size:14px; margin-top:15px;">Loading CRM...</div>
+</div>  
+
 <div id="login-screen">
   <div class="login-card">
     <h1>Build Decor CRM</h1>
@@ -250,7 +272,9 @@
     <div class="logo">Build Decor CRM</div>
     <div class="user-menu">
       <span class="role-badge" id="role-badge"></span>
-      <button type="button" class="signout-btn" id="signout-btn">Log Out</button>
+      <button type="button" class="signout-btn" id="signout-btn" title="Log Out">
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+      </button>
       <button type="button" class="mobile-cal-btn" id="mobile-cal-btn" onclick="openFilterModal()">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
       </button>
@@ -434,18 +458,40 @@ document.getElementById('dash-start').value = getLocalDateStr(thirtyDaysAgo);
 document.getElementById('dash-end').value = getLocalDateStr();
 
 document.getElementById('login-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('login-btn');
+  btn.textContent = "Authenticating..."; btn.disabled = true;
   const { data, error } = await sb.auth.signInWithPassword({ email: document.getElementById('login-email').value.trim(), password: document.getElementById('login-password').value });
-  if (error) { document.getElementById('login-error').style.display='block'; document.getElementById('login-error').textContent=error.message; return; }
+  if (error) { 
+    document.getElementById('login-error').style.display='block'; 
+    document.getElementById('login-error').textContent=error.message; 
+    btn.textContent = "Log In"; btn.disabled = false;
+    return; 
+  }
   currentUser = data.user; await initApp();
 });
+
 document.getElementById('signout-btn').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
-(async () => { const { data } = await sb.auth.getSession(); if (data.session) { currentUser = data.session.user; await initApp(); } })();
+
+// Check session on load
+(async () => { 
+  const { data } = await sb.auth.getSession(); 
+  if (data.session) { 
+    currentUser = data.session.user; 
+    await initApp(); 
+  } else {
+    // Not logged in: Hide loader, show login screen
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+})();
 
 async function initApp() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if (!profile) return;
   currentProfile = profile;
   
+  // Hide loader and login, show main app
+  document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   document.getElementById('role-badge').textContent = profile.role;
@@ -524,76 +570,136 @@ function applyFilters() {
   if (activeTabId === 'panel-calls') loadCallList();
 }
 
-// Upload Data
-document.getElementById('file-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0]; if (!file) return;
-  const log = document.getElementById('upload-log'); log.innerHTML = 'Parsing file...';
-  const data = await file.arrayBuffer();
-  const workbook = XLSX.read(data, { cellDates: true });
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '' });
-  let headerIdx = rows.findIndex(r => r.includes('Date') && r.some(c => String(c).includes('Phone1')));
-  if (headerIdx === -1) { log.innerHTML = 'Error: Invalid format.'; return; }
-  const headers = rows[headerIdx].map(h => String(h).trim());
-  const dataRows = rows.slice(headerIdx + 1).filter(r => r[0]);
-  log.innerHTML = `Found ${dataRows.length} records. Importing...`;
-  let processed = 0, skipped = 0;
-  for (const r of dataRows) {
-    const rowObj = {}; headers.forEach((h, i) => rowObj[h] = r[i]);
-    try { await processSaleRow(rowObj) ? processed++ : skipped++; } catch (err) { skipped++; }
-  }
-  log.innerHTML = `Import Complete. [Saved: ${processed}, Skipped: ${skipped}]`;
-});
 
 function parseDate(val) {
-  if (val instanceof Date) {
-    // Excel reads dates in UTC. We must strictly extract the UTC day to stop timezones from shifting it backwards!
-    const y = val.getUTCFullYear();
-    const m = String(val.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(val.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+  if (!val) return null;
+  
+  // 1. Handle Excel Serial Dates (Massively faster than {cellDates: true})
+  if (typeof val === 'number') {
+    // Excel epoch starts on Dec 30, 1899
+    const d = new Date(Date.UTC(1899, 11, 30)); 
+    d.setUTCDate(d.getUTCDate() + val);
+    
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
+  
+  // 2. Handle Text String Dates (e.g., "15/07/2026")
   const parts = String(val).split('/');
-  return parts.length === 3 ? `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}` : null;
+  if (parts.length === 3) {
+    // Format to strict YYYY-MM-DD
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+  }
+  
+  return null;
 }
 
-async function processSaleRow(row) {
+// ==========================================
+// HIGH-SPEED UPLOAD ENGINE (Batched & Cached)
+// ==========================================
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const log = document.getElementById('upload-log'); 
+  log.innerHTML = '<div style="color:var(--ns-text-main);">Reading Excel file...</div>';
+  
+  // 1. Read & Parse File
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data, { type: 'array' }); 
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', blankrows: false });
+  
+  let headerIdx = rows.findIndex(r => r.includes('Date') && r.some(c => String(c).includes('Phone1')));
+  if (headerIdx === -1) { log.innerHTML = '<span style="color:var(--ns-danger);">Error: Invalid format.</span>'; return; }
+  
+  const headers = rows[headerIdx].map(h => String(h).trim());
+  const dataRows = rows.slice(headerIdx + 1).filter(r => r[0]);
+  const total = dataRows.length;
+  if (total === 0) { log.innerHTML = 'No data found.'; return; }
+
+  // 2. Build Progress UI
+  log.innerHTML = `
+    <div style="margin-bottom: 8px; font-weight: 600; display: flex; justify-content: space-between;">
+      <span>Syncing to Database...</span><span><span id="prog-text">0</span> / ${total}</span>
+    </div>
+    <div style="width: 100%; background: #EAECEF; border-radius: 4px; overflow: hidden; height: 10px;">
+      <div id="prog-bar" style="width: 0%; height: 100%; background: var(--ns-primary); transition: width 0.2s;"></div>
+    </div>
+  `;
+  
+  const progText = document.getElementById('prog-text');
+  const progBar = document.getElementById('prog-bar');
+  
+  // 3. ⚡ CACHE STATIC DATA ONCE (Saves hundreds of database queries!)
+  const { data: rulesData } = await sb.from('category_rules').select('*').eq('active', true);
+  const rules = rulesData || [];
+  
+  const { data: dncData } = await sb.from('customers').select('phone').eq('do_not_contact', true);
+  const dncSet = new Set((dncData || []).map(c => c.phone));
+
+  let processed = 0, skipped = 0;
+  
+  // 4. ⚡ PROCESS IN BATCHES OF 20 (Massive speed boost)
+  const BATCH_SIZE = 20;
+  for (let i = 0; i < total; i += BATCH_SIZE) {
+    const batch = dataRows.slice(i, i + BATCH_SIZE);
+    
+    // Run 20 rows simultaneously
+    const promises = batch.map(async (r) => {
+      const rowObj = {}; headers.forEach((h, idx) => rowObj[h] = r[idx]);
+      try {
+        await processSaleRowFast(rowObj, rules, dncSet) ? processed++ : skipped++;
+      } catch (err) { skipped++; }
+    });
+
+    await Promise.all(promises); // Wait for the batch to finish
+    
+    // Update UI Progress
+    const current = Math.min(i + BATCH_SIZE, total);
+    progText.innerText = current;
+    progBar.style.width = Math.round((current / total) * 100) + '%';
+  }
+  
+  log.innerHTML = `<div style="color: var(--ns-success); font-weight: 600; padding-top: 10px;">✅ Import Complete! [Saved: ${processed} | Skipped: ${skipped}]</div>`;
+  e.target.value = ''; 
+});
+
+// ==========================================
+// OPTIMIZED ROW PROCESSOR
+// ==========================================
+async function processSaleRowFast(row, rules, dncSet) {
   const phone = String(row['Phone1'] || '').trim();
   const name = String(row['Customer'] || '').trim();
   const area = String(row['Area'] || '').trim();
   const category = String(row['BillGroup'] || '').trim().toUpperCase();
   const amount = Number(row['Bill Amount']?.toString().replace(/,/g, '')) || 0;
   const saleDate = parseDate(row['Date']);
+  
   if (!phone || !category || !saleDate) return false;
 
+  // Auto-register category
+  await sb.from('categories').upsert({ name: category }, { onConflict: 'name' });
+
+  // DNC CHECK (Instant memory lookup, 0 network requests)
+  if (dncSet.has(phone)) {
+    await sb.from('sales').insert({ bill_no: row['Bill No']||'', phone, sale_date: saleDate, category, amount, uploaded_by: currentProfile.id });
+    return true;
+  }
+
+  // Update Customer & Insert Sale
   await sb.from('customers').upsert({ phone, name, area }, { onConflict: 'phone' });
-  const { data: cust } = await sb.from('customers').select('do_not_contact').eq('phone', phone).single();
-  const { data: sale } = await sb.from('sales').insert({ bill_no: row['Bill No']||'', phone, sale_date: saleDate, category, amount, uploaded_by: currentProfile.id }).select().single();
-  if (cust?.do_not_contact) return true;
-
-  const { data: activeQueues } = await sb.from('queues')
-    .select('*')
-    .eq('phone', phone)
-    .eq('target_category', category)
-    .in('status', ['active', 'confirmed']);
-
+  const { data: sale } = await sb.from('sales').insert({ bill_no: row['Bill No']||'', phone, sale_date: saleDate, category, amount, uploaded_by: currentProfile.id }).select('id').single();
+  
+  // Check for conversion (cross-sell completed)
+  const { data: activeQueues } = await sb.from('queues').select('id').eq('phone', phone).eq('target_category', category).in('status', ['active', 'confirmed']);
   if (activeQueues && activeQueues.length > 0) {
     await sb.from('queues').update({ status: 'converted' }).eq('id', activeQueues[0].id);
   }
   
-  await triggerNextRule(phone, category, sale.id, saleDate);
-  return true;
-}
-
-async function triggerNextRule(phone, fromCat, saleId, saleDate) {
-  const { data: rules } = await sb.from('category_rules')
-    .select('*')
-    .eq('from_category', fromCat)
-    .eq('active', true);
-    
-  if (!rules || rules.length === 0) return;
-  
-  for (const rule of rules) {
-    // Bulletproof Date Parsing: Splits "YYYY-MM-DD" and creates a strict local date at midnight
+  // TRIGGER NEXT RULES (Memory lookup, 0 network requests)
+  const matchingRules = rules.filter(r => r.from_category === category);
+  for (const rule of matchingRules) {
     const [yyyy, mm, dd] = saleDate.split('-');
     const sendDate = new Date(yyyy, mm - 1, dd); 
     sendDate.setDate(sendDate.getDate() + rule.wait_days);
@@ -601,11 +707,13 @@ async function triggerNextRule(phone, fromCat, saleId, saleDate) {
     await sb.from('queues').insert({ 
       phone: phone, 
       target_category: rule.to_category, 
-      triggered_by_sale_id: saleId, 
+      triggered_by_sale_id: sale.id, 
       send_on_date: getLocalDateStr(sendDate), 
       status: 'active' 
     });
   }
+  
+  return true;
 }
 
 
@@ -626,53 +734,80 @@ function updateSelectedCount() {
 
 
 
-// --- MESSAGES TAB (Simplified Daily View) ---
+// --- MESSAGES TAB (Pending + Sent History Ledger) ---
 async function loadMessageList() {
   const bannerContainer = document.getElementById('trigger-banner-container');
   bannerContainer.innerHTML = '<div class="card" style="margin-top:10px;"><div class="card-body empty-state">Loading messages...</div></div>';
   
   const dateStr = document.getElementById('calls-date').value;
   
-  // Fetch STRICTLY for the selected date
+  // 1. Fetch Pending Messages for this date
   const { data: pendingToSend } = await sb.from('queues')
     .select('*, customers(name, area)')
     .eq('status', 'active')
     .is('message_sent_at', null)
-    .eq('send_on_date', dateStr); // Only today's messages!
+    .eq('send_on_date', dateStr);
 
-  if (!pendingToSend || pendingToSend.length === 0) {
-    bannerContainer.innerHTML = `<div class="card" style="margin-top:10px;"><div class="card-header">Automations for ${dateStr}</div><div class="card-body empty-state">No pending automated messages for this date.</div></div>`;
-    return;
+  // 2. Fetch Already Sent Messages History for this date
+  const { data: sentHistory } = await sb.from('queues')
+    .select('*, customers(name, area)')
+    .not('message_sent_at', 'is', null)
+    .eq('send_on_date', dateStr);
+
+  let html = '';
+
+  // --- RENDER PENDING ---
+  if (pendingToSend && pendingToSend.length > 0) {
+    html += `
+    <div class="card" style="margin-top: 10px; border-top: 4px solid var(--ns-warning);">
+      <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; background:#FFFBCC; color:#8A6D3B; flex-wrap:wrap; gap:10px;">
+        <span style="font-weight:700;">Scheduled Automations (${pendingToSend.length})</span>
+        <button type="button" class="btn-primary" id="send-selected-btn" onclick="sendSelectedWhatsApps()" style="width:auto; padding:6px 18px; font-size:13px; background:#D77915; border:none;">Send Selected (${pendingToSend.length})</button>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40px; text-align:center;"><input type="checkbox" id="select-all-auto" checked onclick="toggleAllAuto(this)" style="width:16px; height:16px; cursor:pointer;" /></th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Offer Campaign</th>
+            </tr>
+          </thead>
+          <tbody>`;
+    pendingToSend.forEach(q => {
+      html += `<tr>
+        <td style="text-align:center;"><input type="checkbox" class="auto-check" value="${q.id}" data-phone="${q.phone}" data-category="${q.target_category}" data-name="${q.customers?.name || 'Customer'}" checked onchange="updateSelectedCount()" style="width:16px; height:16px; cursor:pointer;" /></td>
+        <td style="font-weight:600;">${q.customers?.name || 'Unknown'}<br><span style="font-size:11px; color:var(--ns-text-muted); font-weight:normal;">${q.customers?.area || ''}</span></td>
+        <td style="font-family:monospace;">${q.phone}</td>
+        <td><span class="badge primary">${q.target_category}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  } else {
+    html += `<div class="card" style="margin-top:10px;"><div class="card-header">Automations for ${dateStr}</div><div class="card-body empty-state">No pending automated messages for this date.</div></div>`;
   }
 
-  let html = `
-  <div class="card" style="margin-top: 10px; border-top: 4px solid var(--ns-warning);">
-    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; background:#FFFBCC; color:#8A6D3B; flex-wrap:wrap; gap:10px;">
-      <span style="font-weight:700;">Scheduled Automations (${pendingToSend.length})</span>
-      <button type="button" class="btn-primary" id="send-selected-btn" onclick="sendSelectedWhatsApps()" style="width:auto; padding:6px 18px; font-size:13px; background:#D77915; border:none;">Send Selected (${pendingToSend.length})</button>
-    </div>
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 40px; text-align:center;"><input type="checkbox" id="select-all-auto" checked onclick="toggleAllAuto(this)" style="width:16px; height:16px; cursor:pointer;" /></th>
-            <th>Customer</th>
-            <th>Phone</th>
-            <th>Offer Campaign</th>
-          </tr>
-        </thead>
-        <tbody>`;
-  
-  pendingToSend.forEach(q => {
-    html += `<tr>
-      <td style="text-align:center;"><input type="checkbox" class="auto-check" value="${q.id}" data-phone="${q.phone}" data-category="${q.target_category}" data-name="${q.customers?.name || 'Valued Customer'}" checked onchange="updateSelectedCount()" style="width:16px; height:16px; cursor:pointer;" /></td>
-      <td style="font-weight:600;">${q.customers?.name || 'Unknown'}<br><span style="font-size:11px; color:var(--ns-text-muted); font-weight:normal;">${q.customers?.area || ''}</span></td>
-      <td style="font-family:monospace;">${q.phone}</td>
-      <td><span class="badge primary">${q.target_category}</span></td>
-    </tr>`;
-  });
-  
-  html += `</tbody></table></div></div>`;
+  // --- RENDER SENT HISTORY ---
+  if (sentHistory && sentHistory.length > 0) {
+    html += `
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-header" style="background:#E6F0FA; color:var(--ns-primary);">WhatsApp History (${sentHistory.length} Sent)</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Customer</th><th>Phone</th><th>Campaign</th><th style="text-align:right;">Status</th></tr></thead>
+          <tbody>`;
+    sentHistory.forEach(q => {
+      html += `<tr>
+        <td style="font-weight:600;">${q.customers?.name || 'Unknown'}<br><span style="font-size:11px; color:var(--ns-text-muted); font-weight:normal;">${q.customers?.area || ''}</span></td>
+        <td style="font-family:monospace;">${q.phone}</td>
+        <td><span class="badge primary">${q.target_category}</span></td>
+        <td style="text-align:right;"><span class="badge success">✔️ SENT</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+
   bannerContainer.innerHTML = html;
 }
 
@@ -857,22 +992,31 @@ async function loadCallList() {
   data.forEach(q => {
     let actionHTML = '';
     
-    // If pending, show the action buttons
-    if (q.call_status === 'pending') {
-      actionHTML = `<div class="action-group">
-        <button type="button" class="btn-sm success" onclick="updateCall('${q.id}', 'confirmed')">Conf.</button>
-        <button type="button" class="btn-sm warning" onclick="updateCall('${q.id}', 'no_answer')">No Ans.</button>
-        <button type="button" class="btn-sm warning" onclick="updateCall('${q.id}', 'call_later')">Later</button>
-        <button type="button" class="btn-sm danger" onclick="updateCall('${q.id}', 'rejected')">Reject</button>
-      </div>`;
+    // UNLOCK action buttons for Pending, No Answer, and Call Later
+    if (['pending', 'no_answer', 'call_later'].includes(q.call_status)) {
+      
+      // Add a status badge above the buttons if they were called previously today
+      let badgeHTML = '';
+      if (q.call_status === 'no_answer') badgeHTML = '<div style="margin-bottom:6px;"><span class="badge warning">📵 NO ANSWER</span></div>';
+      if (q.call_status === 'call_later') badgeHTML = '<div style="margin-bottom:6px;"><span class="badge warning">⏳ CALL LATER</span></div>';
+      
+      actionHTML = `
+        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+          ${badgeHTML}
+          <div class="action-group">
+            <button type="button" class="btn-sm success" onclick="updateCall('${q.id}', 'confirmed')" title="Confirm Order">Conf.</button>
+            <button type="button" class="btn-sm warning" onclick="updateCall('${q.id}', 'no_answer')" title="Mark No Answer">No Ans.</button>
+            <button type="button" class="btn-sm warning" onclick="updateCall('${q.id}', 'call_later')" title="Mark Call Later">Later</button>
+            <button type="button" class="btn-sm danger" onclick="updateCall('${q.id}', 'rejected')" title="Remove from Queue">Reject</button>
+          </div>
+        </div>`;
     } 
-    // If answered/updated, lock the row and permanently display the badge!
+    // LOCK the row completely only when Confirmed, Rejected, or Converted
     else {
       const statusMap = {
         'confirmed': '<span class="badge success">✅ CONFIRMED</span>',
-        'no_answer': '<span class="badge warning">📵 NO ANSWER</span>',
-        'call_later': '<span class="badge warning">⏳ ASKED TO CALL LATER</span>',
-        'rejected': '<span class="badge danger">🚫 REJECTED</span>'
+        'rejected': '<span class="badge danger">🚫 REJECTED</span>',
+        'converted': '<span class="badge success">🎉 CONVERTED (SALE LOGGED)</span>'
       };
       actionHTML = statusMap[q.call_status] || `<span class="badge primary">${q.call_status.toUpperCase()}</span>`;
     }
@@ -1069,8 +1213,10 @@ async function loadSalesDash() {
     if(s.amount > maxSale) maxSale = s.amount;
     catMap[s.category] = (catMap[s.category] || 0) + Number(s.amount);
     
-    if(!custMap[s.phone]) custMap[s.phone] = { name: custDict[s.phone] || s.phone, rev: 0 };
+    // We now add a "cats: new Set()" to track unique categories
+    if(!custMap[s.phone]) custMap[s.phone] = { name: custDict[s.phone] || s.phone, rev: 0, cats: new Set() };
     custMap[s.phone].rev += Number(s.amount);
+    if (s.category) custMap[s.phone].cats.add(s.category);
   });
 
   document.getElementById('sales-kpi-overview').innerHTML = `
@@ -1089,7 +1235,20 @@ async function loadSalesDash() {
   const sortedCusts = Object.values(custMap).sort((a,b) => b.rev - a.rev).slice(0, 5);
   let custHtml = '<thead><tr><th>Customer</th><th style="text-align:right;">Total Spend</th></tr></thead><tbody>';
   if(sortedCusts.length === 0) custHtml += '<tr><td colspan="2" class="empty-state">No data.</td></tr>';
-  sortedCusts.forEach(c => { custHtml += `<tr><td style="font-weight:600;">${c.name}</td><td style="text-align:right; font-weight:600; color:var(--ns-success);">₹${Number(c.rev).toLocaleString()}</td></tr>`; });
+  
+  // Render categories as tiny badges under the name
+  sortedCusts.forEach(c => { 
+    const catBadges = Array.from(c.cats).map(cat => `<span class="badge primary" style="font-size:10px; padding:3px 6px; border-radius:3px;">${cat}</span>`).join('');
+    
+    custHtml += `<tr>
+      <td>
+        <div style="font-weight:600;">${c.name}</div>
+        <div style="margin-top:5px; display:flex; flex-wrap:wrap; gap:4px;">${catBadges}</div>
+      </td>
+      <td style="text-align:right; font-weight:600; color:var(--ns-success); vertical-align:middle;">₹${Number(c.rev).toLocaleString()}</td>
+    </tr>`; 
+  });
+  
   document.getElementById('sales-top-customers').innerHTML = custHtml + '</tbody>';
 }
 
